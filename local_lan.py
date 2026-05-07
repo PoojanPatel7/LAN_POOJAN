@@ -1,4 +1,5 @@
 import os
+import sys
 import socket
 import threading
 import uuid
@@ -245,7 +246,7 @@ HTML_TEMPLATE = """
         .empty-state { text-align: center; color: var(--text-muted); padding: 60px 0; font-size: 1.15rem; background: var(--bg); border-radius: 16px; border: 1px dashed var(--border);}
 
         /* Name Modal */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(9, 9, 11, 0.9); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(9, 9, 11, 0.9); display: none; justify-content: center; align-items: center; z-index: 100000; backdrop-filter: blur(8px); }
         .modal-content { background: var(--card); padding: 50px 40px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); width: 90%; max-width: 450px; text-align: center; border: 1px solid var(--border); }
         .modal-content h3 { margin-top: 0; font-size: 2rem; margin-bottom: 15px; font-weight: 800;}
         .modal-content input { width: 100%; padding: 18px; border-radius: 14px; border: 2px solid var(--border); background: var(--bg); color: white; font-size: 1.25rem; text-align: center; margin-bottom: 25px; box-sizing: border-box; transition: all 0.3s;}
@@ -260,37 +261,55 @@ HTML_TEMPLATE = """
         #chatFab { position: fixed; bottom: 30px; right: 30px; background: var(--accent); color: white; width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.8rem; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4); cursor: pointer; transition: all 0.3s; z-index: 100; display: none; }
         #chatFab:hover { transform: scale(1.1) translateY(-5px); background: var(--accent-hover); }
         
-        #chatDrawer { position: fixed; top: 0; right: -450px; width: 400px; max-width: 100%; height: 100vh; background: var(--chat-bg); border-left: 1px solid var(--border); z-index: 200; display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
+        /* Fixed to 100dvh for better mobile layout */
+        #chatDrawer { position: fixed; top: 0; right: -500px; width: 420px; max-width: 100vw; height: 100dvh; background: var(--chat-bg); border-left: 1px solid var(--border); z-index: 9999; display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
         #chatDrawer.open { right: 0; }
         
-        .chat-header { padding: 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .chat-header select { background: var(--bg); color: white; border: 1px solid var(--border); padding: 10px 15px; border-radius: 10px; font-size: 1.05rem; font-weight: bold; outline: none; cursor: pointer; }
-        .close-chat-btn { background: transparent; color: var(--text-muted); border: none; font-size: 1.5rem; cursor: pointer; padding: 5px; border-radius: 8px; transition: all 0.2s;}
+        .chat-header { padding: 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 10; }
+        .chat-header select { background: var(--bg); color: white; border: 1px solid var(--border); padding: 12px 18px; border-radius: 12px; font-size: 1.05rem; font-weight: bold; outline: none; cursor: pointer; flex: 1; margin-right: 15px;}
+        .chat-header select:focus { border-color: var(--accent); }
+        .close-chat-btn { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); font-size: 1.2rem; cursor: pointer; padding: 10px 15px; border-radius: 12px; transition: all 0.2s;}
         .close-chat-btn:hover { color: white; background: rgba(255,255,255,0.1); }
         
-        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #0b1120; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #0b1120; scroll-behavior: smooth; }
         
-        .msg-bubble { max-width: 80%; padding: 12px 16px; border-radius: 16px; position: relative; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word;}
-        .msg-my { align-self: flex-end; background: var(--chat-my); color: white; border-bottom-right-radius: 4px; }
-        .msg-other { align-self: flex-start; background: var(--chat-other); color: white; border-bottom-left-radius: 4px; }
-        .msg-sender { font-size: 0.75rem; font-weight: bold; opacity: 0.8; margin-bottom: 4px; display: block; }
-        .msg-time { font-size: 0.65rem; opacity: 0.6; text-align: right; margin-top: 5px; display: block; }
+        .msg-bubble { max-width: 85%; padding: 14px 18px; border-radius: 18px; position: relative; font-size: 0.95rem; line-height: 1.5; word-wrap: break-word;}
+        .msg-my { align-self: flex-end; background: var(--chat-my); color: white; border-bottom-right-radius: 4px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2); }
+        .msg-other { align-self: flex-start; background: var(--chat-other); color: white; border-bottom-left-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .msg-sender { font-size: 0.8rem; font-weight: 800; opacity: 0.85; margin-bottom: 6px; display: block; color: #e0e7ff; }
+        .msg-time { font-size: 0.7rem; opacity: 0.6; text-align: right; margin-top: 6px; display: block; }
         
-        .msg-media { max-width: 100%; border-radius: 10px; margin-top: 5px; }
-        .msg-file-link { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 10px; color: white; text-decoration: none; margin-top: 5px; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.1);}
-        .msg-file-link:hover { background: rgba(0,0,0,0.4); }
+        .msg-media { max-width: 100%; border-radius: 12px; margin-top: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .msg-file-link { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.25); padding: 12px 18px; border-radius: 12px; color: white; text-decoration: none; margin-top: 5px; font-weight: bold; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s;}
+        .msg-file-link:hover { background: rgba(0,0,0,0.4); transform: translateY(-1px); }
 
-        .chat-input-area { padding: 15px; background: var(--card); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
-        .attach-btn { background: #3f3f46; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center;}
-        .attach-btn:hover { background: #52525b; }
-        .chat-input-area input[type="text"] { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 12px 15px; border-radius: 20px; font-size: 1rem; outline: none; }
+        .chat-input-area { padding: 15px; background: var(--card); border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: center; z-index: 10; box-shadow: 0 -4px 10px rgba(0,0,0,0.2); }
+        .attach-btn { background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border); width: 50px; height: 50px; border-radius: 14px; font-size: 1.3rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center;}
+        .attach-btn:hover { background: rgba(255,255,255,0.1); }
+        .chat-input-area input[type="text"] { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 15px 18px; border-radius: 14px; font-size: 1rem; outline: none; transition: border 0.3s; }
         .chat-input-area input[type="text"]:focus { border-color: var(--accent); }
-        .send-btn { background: var(--accent); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center;}
-        .send-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
+        .send-btn { background: var(--accent); color: white; border: none; width: 50px; height: 50px; border-radius: 14px; font-size: 1.3rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);}
+        .send-btn:hover { background: var(--accent-hover); transform: translateY(-2px); }
 
         /* Scrollbar styling for chat */
         .chat-messages::-webkit-scrollbar { width: 6px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+
+        /* Upload Choice Modal */
+        .upload-choice-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(9,9,11,0.85); display: none; justify-content: center; align-items: center; z-index: 99999; backdrop-filter: blur(6px); }
+        .upload-choice-overlay.active { display: flex; }
+        .upload-choice-card { background: #18181b; padding: 35px 30px; border-radius: 20px; border: 1px solid #27272a; box-shadow: 0 25px 50px rgba(0,0,0,0.6); width: 90%; max-width: 400px; text-align: center; }
+        .upload-choice-card h3 { margin: 0 0 8px 0; font-size: 1.5rem; font-weight: 800; }
+        .upload-choice-card p { color: #a1a1aa; margin: 0 0 25px 0; font-size: 0.95rem; }
+        .upload-choice-card .file-preview { background: #09090b; border: 1px solid #27272a; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; color: #a1a1aa; font-size: 0.9rem; word-break: break-all; font-family: monospace; }
+        .choice-btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-bottom: 10px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .choice-btn:hover { transform: translateY(-2px); }
+        .choice-chat { background: var(--accent); color: white; }
+        .choice-chat:hover { background: var(--accent-hover); box-shadow: 0 8px 20px rgba(99,102,241,0.3); }
+        .choice-lan { background: #10b981; color: white; }
+        .choice-lan:hover { background: #059669; box-shadow: 0 8px 20px rgba(16,185,129,0.3); }
+        .choice-cancel { background: #3f3f46; color: #a1a1aa; font-size: 0.95rem; }
+        .choice-cancel:hover { background: #52525b; color: white; }
 
         @media (max-width: 700px) {
             body { padding: 15px; }
@@ -302,7 +321,13 @@ HTML_TEMPLATE = """
             .file-info { padding-right: 35px; }
             .download-btn { width: 100%; padding: 16px; font-size: 1.1rem; }
             li { position: relative; }
-            #chatDrawer { width: 100%; right: -100%; }
+            
+            /* Mobile Chat Styling */
+            #chatDrawer { right: -100vw; width: 100%; border-left: none; }
+            #chatDrawer.open { right: 0; }
+            /* Safe area spacing for modern phones (iPhones) */
+            .chat-input-area { padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
+            #chatFab { bottom: 20px; right: 20px; }
         }
     </style>
 </head>
@@ -375,10 +400,22 @@ HTML_TEMPLATE = """
             <!-- Chat bubbles injected here -->
         </div>
         <div class="chat-input-area">
-            <input type="file" id="chatFileInput" style="display:none" onchange="sendChatFile()" multiple>
+            <input type="file" id="chatFileInput" style="display:none" onchange="showUploadChoice()" multiple>
             <button class="attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Attach File/Image">📎</button>
             <input type="text" id="chatTextInput" placeholder="Type a message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendChatMsg()">
             <button class="send-btn" onclick="sendChatMsg()">➤</button>
+        </div>
+    </div>
+
+    <!-- Upload Choice Modal -->
+    <div class="upload-choice-overlay" id="uploadChoiceModal">
+        <div class="upload-choice-card">
+            <h3>📎 Attach Files</h3>
+            <p>How would you like to share?</p>
+            <div class="file-preview" id="choiceFilePreview">No files selected</div>
+            <button class="choice-btn choice-chat" onclick="executeUpload('chat')">💬 Send in Chat</button>
+            <button class="choice-btn choice-lan" onclick="executeUpload('lan')">📁 Upload to LAN Shared Files</button>
+            <button class="choice-btn choice-cancel" onclick="cancelUploadChoice()">Cancel</button>
         </div>
     </div>
 
@@ -564,17 +601,17 @@ HTML_TEMPLATE = """
         // --- CHAT SYSTEM LOGIC ---
         function toggleChat() {
             const drawer = document.getElementById('chatDrawer');
-            const main = document.getElementById('mainContent');
             isChatOpen = !isChatOpen;
             
             if (isChatOpen) {
                 drawer.classList.add('open');
-                main.style.filter = "brightness(0.5)";
+                // Prevent body scroll behind chat on mobile
+                document.body.style.overflow = window.innerWidth <= 700 ? "hidden" : "";
                 document.getElementById('chatTextInput').focus();
                 refreshChatUI(true);
             } else {
                 drawer.classList.remove('open');
-                main.style.filter = "none";
+                document.body.style.overflow = "";
             }
         }
 
@@ -587,10 +624,7 @@ HTML_TEMPLATE = """
                 if (data.messages && data.messages.length > 0) {
                     chatMessagesData = chatMessagesData.concat(data.messages);
                     lastChatId = data.messages[data.messages.length - 1].id;
-                    if (isChatOpen) refreshChatUI(false); // Only refresh if open
-                    else {
-                        // Visual indicator of new message on FAB could go here
-                    }
+                    if (isChatOpen) refreshChatUI(false); 
                 }
             } catch(e) { console.error("Chat fetch error", e); }
         }
@@ -623,34 +657,38 @@ HTML_TEMPLATE = """
                 return false;
             });
 
-            relevantMsgs.forEach(m => {
-                const isMine = m.is_mine;
-                const bubbleClass = isMine ? 'msg-my' : 'msg-other';
-                const senderName = isMine ? 'You' : m.from_name;
-                
-                html += `<div class="msg-bubble ${bubbleClass}">`;
-                if (!isMine && target === 'group') {
-                    html += `<span class="msg-sender">${senderName}</span>`;
-                }
-                
-                if (m.type === 'text') {
-                    html += `<span>${m.content}</span>`;
-                } else if (m.type === 'image') {
-                    html += `<img src="${m.url}" class="msg-media" onclick="window.open('${m.url}', '_blank')">`;
-                    if (m.content) html += `<div style="margin-top:5px">${m.content}</div>`;
-                } else if (m.type === 'video') {
-                    html += `<video src="${m.url}" controls class="msg-media"></video>`;
-                    if (m.content) html += `<div style="margin-top:5px">${m.content}</div>`;
-                } else {
-                    // File
-                    html += `<a href="${m.url}" class="msg-file-link" download>
-                                📄 ${m.filename}
-                             </a>`;
-                    if (m.content) html += `<div style="margin-top:5px">${m.content}</div>`;
-                }
-                
-                html += `<span class="msg-time">${formatTime(m.time)}</span></div>`;
-            });
+            if(relevantMsgs.length === 0) {
+                 html = `<div style="text-align:center; color:#a1a1aa; padding-top:40px;">No messages yet. Send one below to start chatting!</div>`;
+            } else {
+                relevantMsgs.forEach(m => {
+                    const isMine = m.is_mine;
+                    const bubbleClass = isMine ? 'msg-my' : 'msg-other';
+                    const senderName = isMine ? 'You' : m.from_name;
+                    
+                    html += `<div class="msg-bubble ${bubbleClass}">`;
+                    if (!isMine && target === 'group') {
+                        html += `<span class="msg-sender">${senderName}</span>`;
+                    }
+                    
+                    if (m.type === 'text') {
+                        html += `<span>${m.content}</span>`;
+                    } else if (m.type === 'image') {
+                        html += `<img src="${m.url}" class="msg-media" onclick="window.open('${m.url}', '_blank')">`;
+                        if (m.content) html += `<div style="margin-top:5px">${m.content}</div>`;
+                    } else if (m.type === 'video') {
+                        html += `<video src="${m.url}" controls class="msg-media"></video>`;
+                        if (m.content) html += `<div style="margin-top:5px">${m.content}</div>`;
+                    } else {
+                        // File
+                        html += `<a href="${m.url}" class="msg-file-link" download>
+                                    📄 ${m.filename}
+                                 </a>`;
+                        if (m.content) html += `<div style="margin-top:5px">${m.content}</div>`;
+                    }
+                    
+                    html += `<span class="msg-time">${formatTime(m.time)}</span></div>`;
+                });
+            }
             
             container.innerHTML = html;
             if (forceScroll) {
@@ -679,10 +717,37 @@ HTML_TEMPLATE = """
             } catch(e) { console.error(e); }
         }
 
-        async function sendChatFile() {
+        async function sendChatFile(mode) {
             const fileInput = document.getElementById('chatFileInput');
             if (!fileInput.files.length) return;
             
+            if (mode === 'lan') {
+                // Upload each file to LAN shared files
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    const lanFd = new FormData();
+                    lanFd.append('file', fileInput.files[i]);
+                    lanFd.append('uploader_name', myName);
+                    try {
+                        await fetch('/upload', { method: 'POST', body: lanFd });
+                    } catch(e) { console.error(e); }
+                }
+                // Send a text message in chat about the upload
+                const target = document.getElementById('chatTarget').value;
+                const to_ip = target === 'group' ? '' : target;
+                const fd2 = new FormData();
+                fd2.append('text', '📁 Uploaded ' + fileInput.files.length + ' file(s) to LAN Shared Files');
+                fd2.append('to_ip', to_ip);
+                fd2.append('from_name', myName);
+                try {
+                    await fetch('/api/chat/send', { method: 'POST', body: fd2 });
+                } catch(e) {}
+                fileInput.value = '';
+                fetchUpdates();
+                fetchChatUpdates();
+                return;
+            }
+            
+            // Default: send in chat
             const target = document.getElementById('chatTarget').value;
             const to_ip = target === 'group' ? '' : target;
             
@@ -705,8 +770,26 @@ HTML_TEMPLATE = """
             } catch(e) { console.error(e); }
         }
 
+        function showUploadChoice() {
+            const fileInput = document.getElementById('chatFileInput');
+            if (!fileInput.files.length) return;
+            const names = Array.from(fileInput.files).map(f => f.name).join(', ');
+            document.getElementById('choiceFilePreview').innerText = fileInput.files.length + ' file(s): ' + names;
+            document.getElementById('uploadChoiceModal').classList.add('active');
+        }
+
+        function executeUpload(mode) {
+            document.getElementById('uploadChoiceModal').classList.remove('active');
+            sendChatFile(mode);
+        }
+
+        function cancelUploadChoice() {
+            document.getElementById('uploadChoiceModal').classList.remove('active');
+            document.getElementById('chatFileInput').value = '';
+        }
+
         setInterval(fetchUpdates, 2000);
-        setInterval(fetchChatUpdates, 1500); // Poll chat slightly faster for better realtime feel
+        setInterval(fetchChatUpdates, 1500);
     </script>
 </body>
 </html>
@@ -1050,6 +1133,11 @@ class LANShareApp(ctk.CTk):
         self.title("👑 My LAN File Sharer - Premium Edition")
         self.geometry("1150x850")
         self.minsize(950, 650)
+        
+        # Set window icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lan.ico")
+        if os.path.exists(icon_path):
+            self.iconbitmap(icon_path)
         
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
@@ -1475,36 +1563,41 @@ class LANShareApp(ctk.CTk):
         box = ctk.CTkFrame(self.users_frame, fg_color="#27272a", corner_radius=10)
         box.pack(fill="x", padx=5, pady=5)
         
-        lbl_name = ctk.CTkLabel(box, text=data['name'], font=ctk.CTkFont(weight="bold", size=14), anchor="w")
-        lbl_name.pack(side="left", padx=15, pady=10, fill="x", expand=True)
+        info_frame = ctk.CTkFrame(box, fg_color="transparent")
+        info_frame.pack(side="left", padx=15, pady=8, fill="x", expand=True)
+        
+        lbl_name = ctk.CTkLabel(info_frame, text=data['name'], font=ctk.CTkFont(weight="bold", size=14), anchor="w")
+        lbl_name.pack(fill="x")
+        
+        status = "🟢 Active" if (time.time() - data['last_seen'] < 60) else "🟡 Idle"
+        lbl_info = ctk.CTkLabel(info_frame, text=f"{ip} | {data['os']} | {status}", font=ctk.CTkFont(size=11), text_color="#a1a1aa", anchor="w")
+        lbl_info.pack(fill="x")
         
         right_panel = ctk.CTkFrame(box, fg_color="transparent")
         right_panel.pack(side="right", padx=10, pady=5)
         
         switch_var = tk.BooleanVar(value=data['can_upload'])
-        switch = ctk.CTkSwitch(right_panel, text="Uploads", variable=switch_var, command=lambda: self.toggle_upload_permission(ip, switch_var), progress_color="#6366f1")
-        switch.pack(side="left", padx=10)
-        
-        btn_info = ctk.CTkButton(right_panel, text="ℹ️", width=30, height=30, font=ctk.CTkFont(size=16), fg_color="#3f3f46", hover_color="#52525b", command=lambda: self.show_user_info(ip))
-        btn_info.pack(side="left", padx=5)
+        switch = ctk.CTkSwitch(right_panel, text="Uploads", variable=switch_var, command=lambda: self.toggle_upload_permission(ip, switch_var), progress_color="#6366f1", width=60)
+        switch.pack(side="left", padx=5)
 
-        btn_remove = ctk.CTkButton(right_panel, text="Remove", width=65, height=30, font=ctk.CTkFont(size=12, weight="bold"), fg_color="#ef4444", hover_color="#dc2626", command=lambda i=ip: self.kick_user(i))
+        btn_remove = ctk.CTkButton(right_panel, text="Remove", width=60, height=28, font=ctk.CTkFont(size=11, weight="bold"), fg_color="#ef4444", hover_color="#dc2626", command=lambda i=ip: self.kick_user(i))
         btn_remove.pack(side="left", padx=5)
 
         self.user_widgets[ip] = {
-            'box': box, 'lbl_name': lbl_name, 'switch_var': switch_var
+            'box': box, 'lbl_name': lbl_name, 'lbl_info': lbl_info, 'switch_var': switch_var
         }
 
     def update_user_box(self, ip, data):
         w = self.user_widgets[ip]
-        status_indicator = ""
+        status = "🟢 Active" if (time.time() - data['last_seen'] < 60) else "🟡 Idle"
+        w['lbl_info'].configure(text=f"{ip} | {data['os']} | {status}")
+        
         if time.time() - data['last_seen'] > 60:
-            status_indicator = " (Idle)"
             w['lbl_name'].configure(text_color="#a1a1aa")
         else:
             w['lbl_name'].configure(text_color="#fafafa")
             
-        w['lbl_name'].configure(text=f"{data['name']}{status_indicator}")
+        w['lbl_name'].configure(text=data['name'])
         if w['switch_var'].get() != data['can_upload']: w['switch_var'].set(data['can_upload'])
 
     def toggle_upload_permission(self, ip, var):
@@ -1512,13 +1605,6 @@ class LANShareApp(ctk.CTk):
         SERVER_STATE['users'][ip]['can_upload'] = state
         action = "Allowed" if state else "Denied"
         self.append_log(f"🛡️ {action} upload permission for {SERVER_STATE['users'][ip]['name']}")
-
-    def show_user_info(self, ip):
-        if ip not in SERVER_STATE['users']: return
-        data = SERVER_STATE['users'][ip]
-        status = "Active" if (time.time() - data['last_seen'] < 60) else "Idle"
-        info = f"Network IP: {ip}\nDevice/OS: {data['os']}\nStatus: {status}\nUpload Permission: {'Granted' if data['can_upload'] else 'Revoked'}"
-        messagebox.showinfo(f"Device Info: {data['name']}", info, parent=self)
 
     # --- HOST CHAT UI ---
     def refresh_chat_user_list(self):
@@ -1588,29 +1674,87 @@ class LANShareApp(ctk.CTk):
         self.render_chat_messages()
 
     def host_chat_attach(self):
-        filepath = filedialog.askopenfilename(title="Select file to send in chat")
-        if not filepath: return
-        global chat_msg_id_counter
+        filepaths = filedialog.askopenfilenames(title="Select file(s) to share")
+        if not filepaths: return
         
-        filename = os.path.basename(filepath)
-        safe_name = f"{uuid.uuid4().hex[:6]}_{filename}"
-        dest = os.path.join(CHAT_DIR, safe_name)
-        shutil.copy2(filepath, dest)
+        # Ask how to share
+        choice_win = ctk.CTkToplevel(self)
+        choice_win.title("Share Method")
+        choice_win.geometry("380x280")
+        choice_win.grab_set()
+        choice_win.resizable(False, False)
+        
+        # Center the window
+        choice_win.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - 190
+        y = self.winfo_y() + (self.winfo_height() // 2) - 140
+        choice_win.geometry(f"+{x}+{y}")
+        
+        ctk.CTkLabel(choice_win, text="📎 Share Files", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(25, 5))
+        ctk.CTkLabel(choice_win, text=f"{len(filepaths)} file(s) selected", text_color="#a1a1aa").pack(pady=(0, 20))
+        
+        def do_chat():
+            choice_win.destroy()
+            self._send_files_to_chat(filepaths)
+        
+        def do_lan():
+            choice_win.destroy()
+            self._send_files_to_lan(filepaths)
+        
+        ctk.CTkButton(choice_win, text="💬 Send in Chat", fg_color="#6366f1", hover_color="#4f46e5", height=45, font=ctk.CTkFont(weight="bold", size=15), command=do_chat).pack(fill="x", padx=30, pady=5)
+        ctk.CTkButton(choice_win, text="📁 Upload to LAN Shared Files", fg_color="#10b981", hover_color="#059669", height=45, font=ctk.CTkFont(weight="bold", size=15), command=do_lan).pack(fill="x", padx=30, pady=5)
+        ctk.CTkButton(choice_win, text="Cancel", fg_color="#3f3f46", hover_color="#52525b", height=38, command=choice_win.destroy).pack(fill="x", padx=30, pady=(5, 20))
 
-        mime_type, _ = mimetypes.guess_type(filename)
-        msg_type = 'file'
-        if mime_type:
-            if mime_type.startswith('image/'): msg_type = 'image'
-            elif mime_type.startswith('video/'): msg_type = 'video'
+    def _send_files_to_chat(self, filepaths):
+        global chat_msg_id_counter
+        for filepath in filepaths:
+            filename = os.path.basename(filepath)
+            safe_name = f"{uuid.uuid4().hex[:6]}_{filename}"
+            dest = os.path.join(CHAT_DIR, safe_name)
+            shutil.copy2(filepath, dest)
 
+            mime_type, _ = mimetypes.guess_type(filename)
+            msg_type = 'file'
+            if mime_type:
+                if mime_type.startswith('image/'): msg_type = 'image'
+                elif mime_type.startswith('video/'): msg_type = 'video'
+
+            msg = {
+                'id': chat_msg_id_counter, 'from': 'Host', 'from_name': '👑 ' + SERVER_STATE['host_name'],
+                'to': self.chat_target_ip, 'type': msg_type, 'content': None,
+                'url': f"/chat_media/{safe_name}", 'filename': filename, 'time': time.time()
+            }
+            CHAT_MESSAGES.append(msg)
+            chat_msg_id_counter += 1
+            
+        self.render_chat_messages()
+
+    def _send_files_to_lan(self, filepaths):
+        global chat_msg_id_counter
+        for filepath in filepaths:
+            file_id = str(uuid.uuid4())
+            filename = os.path.basename(filepath)
+            shared_files[file_id] = {
+                'name': filename,
+                'path': filepath,
+                'pin': None,
+                'size_formatted': format_size(get_actual_size(filepath)),
+                'uploader': "👑 " + SERVER_STATE['host_name'],
+                'is_folder': False
+            }
+        self.refresh_file_list()
+        
+        # Announce in chat
         msg = {
             'id': chat_msg_id_counter, 'from': 'Host', 'from_name': '👑 ' + SERVER_STATE['host_name'],
-            'to': self.chat_target_ip, 'type': msg_type, 'content': None,
-            'url': f"/chat_media/{safe_name}", 'filename': filename, 'time': time.time()
+            'to': self.chat_target_ip, 'type': 'text',
+            'content': f"📁 Added {len(filepaths)} file(s) to LAN Shared Files",
+            'url': None, 'filename': None, 'time': time.time()
         }
         CHAT_MESSAGES.append(msg)
         chat_msg_id_counter += 1
         self.render_chat_messages()
+        self.append_log(f"📁 Added {len(filepaths)} file(s) to LAN via chat attach.")
 
     def open_chat_file(self, filename):
         # Allow host to easily click and open media sent in chat
@@ -1725,6 +1869,10 @@ class LANShareApp(ctk.CTk):
                 self.btn_copy_link.configure(state="normal")
                 self.btn_open_web.configure(state="normal")
                 
+                # Auto-enable Live Chat when server starts
+                SERVER_STATE['chat_enabled'] = True
+                self.btn_toggle_chat.configure(text="🛑 Stop Live Chat", fg_color="#ef4444", hover_color="#dc2626")
+                
                 if SERVER_STATE['is_secure']: self.lbl_url.configure(text=f"🔒 SECURE ACTIVE\n{url}", text_color="#10b981")
                 else: self.lbl_url.configure(text=f"🌐 OPEN ACTIVE\n{url}", text_color="#10b981")
                     
@@ -1733,6 +1881,7 @@ class LANShareApp(ctk.CTk):
                 self.append_log(f"\n--- 🚀 Premium Server Started on Port {port} ---")
                 mode_str = "Secure (PIN Required)" if SERVER_STATE['is_secure'] else "Open (No Global PIN)"
                 self.append_log(f"Mode: {mode_str}")
+                self.append_log("💬 Live Chat auto-enabled.")
                 self.append_log("Waiting for network devices to connect...")
 
             except Exception as e:
