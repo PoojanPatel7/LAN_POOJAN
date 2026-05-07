@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime directories (auto-created by the app)
+LAN_Shared_Uploads/
+
+# Temp files
+*.tmp
+*.bak
+*.log
+
+# Video/media artifacts
+*.avi
+*.mp4
+*.mkv
+
+# Other project files (not part of this tool)
+all.py
+all2.py
+app.py
+app2.py
+app3.py
+home/
+output.avi
