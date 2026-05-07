@@ -91,8 +91,8 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/PoojanPatel7/lan-file-sharer.git
-cd lan-file-sharer
+git clone https://github.com/PoojanPatel7/LAN_POOJAN.git
+cd LAN_POOJAN
 
 # 2. Install dependencies
 pip install customtkinter flask qrcode pillow
